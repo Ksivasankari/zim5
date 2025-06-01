@@ -50,7 +50,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   // Redirect based on user role
   if (user?.role === 'admin' && !location.pathname.startsWith('/admin')) {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to="/admin\" replace />;
   }
 
   if (user?.role === 'client' && !location.pathname.startsWith('/customer')) {
@@ -180,7 +180,7 @@ function App() {
             />
 
             {/* Fallback route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/\" replace />} />
           </Routes>
         </BrowserRouter>
 
