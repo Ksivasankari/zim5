@@ -1,23 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone, Calendar, Award, Users } from 'lucide-react';
-import { trainers, members } from '../data/mockData';
+import { ArrowLeft, Mail, Phone, Calendar, Award, Users, X } from 'lucide-react';
+import { members } from '../data/mockData';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import { formatDate } from '../lib/utils';
 import { useMemberContext } from '../context/MemberContext';
-import { Trainer } from '../types';
+import { Member } from '../types';
+import toast from 'react-hot-toast';
 
 const TrainerDetailsPage: React.FC = () => {
   const { id } = useParams();
-  const {trainers,updateTrainer} = useMemberContext();
+  const { trainers, members: allMembers, updateTrainer } = useMemberContext();
   const trainer = trainers.find(t => t.id === id);
 
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [formData, setFormData] = React.useState(trainer);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState(trainer);
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>(trainer?.assignedMembers || []);
 
-  const assignedMembers = members.slice(0, 3); 
+  // Get assigned members details
+  const assignedMembers = allMembers.filter(m => selectedMembers.includes(m.id));
+  
+  // Get available members (not assigned to this trainer)
+  const availableMembers = allMembers.filter(m => !selectedMembers.includes(m.id));
+
   if (!trainer) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -39,10 +47,77 @@ const TrainerDetailsPage: React.FC = () => {
   };
 
   const handleSave = () => {
-    // updateTrainer();
-    console.log('Updated data:', formData);
+    if (!formData) return;
+    
+    const updatedTrainer = {
+      ...formData,
+      assignedMembers: selectedMembers
+    };
+    
+    updateTrainer(updatedTrainer);
+    toast.success('Trainer details updated successfully');
     setIsEditing(false);
   };
+
+  const handleRemoveMember = (memberId: string) => {
+    setSelectedMembers(prev => prev.filter(id => id !== memberId));
+    toast.success('Member removed from trainer');
+  };
+
+  const handleAddMember = (memberId: string) => {
+    setSelectedMembers(prev => [...prev, memberId]);
+  };
+
+  const MemberAssignmentModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Assign New Members</h3>
+          <button onClick={() => setShowMemberModal(false)} className="text-gray-500 hover:text-gray-700">
+            <X size={20} />
+          </button>
+        </div>
+        
+        <div className="space-y-4">
+          {availableMembers.map(member => (
+            <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center">
+                <img
+                  src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=0EA5E9&color=fff`}
+                  alt={member.name}
+                  className="h-10 w-10 rounded-full"
+                />
+                <div className="ml-3">
+                  <p className="font-medium">{member.name}</p>
+                  <p className="text-sm text-gray-500">{member.email}</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  handleAddMember(member.id);
+                  toast.success(`${member.name} assigned to trainer`);
+                }}
+              >
+                Assign
+              </Button>
+            </div>
+          ))}
+          
+          {availableMembers.length === 0 && (
+            <p className="text-center text-gray-500 py-4">No available members to assign</p>
+          )}
+        </div>
+        
+        <div className="mt-6 flex justify-end">
+          <Button variant="outline" onClick={() => setShowMemberModal(false)}>
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -51,6 +126,12 @@ const TrainerDetailsPage: React.FC = () => {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Members
         </Link>
+        <Button 
+          variant="outline" 
+          onClick={() => setIsEditing(!isEditing)}
+        >
+          {isEditing ? 'Cancel Edit' : 'Edit Trainer'}
+        </Button>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -79,9 +160,6 @@ const TrainerDetailsPage: React.FC = () => {
                 <span className="ml-2 text-sm text-gray-500">Trainer ID: {trainer.trainerId}</span>
               </div>
             </div>
-            <Button variant="outline" className="ml-[200px]" onClick={() => setIsEditing(!isEditing)}>
-          {isEditing ? 'Cancel Edit' : 'Edit Trainer'}
-        </Button>
           </div>
         </div>
 
@@ -93,7 +171,6 @@ const TrainerDetailsPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Email */}
                   <div className="flex items-center">
                     <dt className="flex items-center text-sm font-medium text-gray-500 w-24">
                       <Mail className="h-4 w-4 mr-2" />
@@ -113,7 +190,6 @@ const TrainerDetailsPage: React.FC = () => {
                     </dd>
                   </div>
 
-                  {/* Phone */}
                   <div className="flex items-center">
                     <dt className="flex items-center text-sm font-medium text-gray-500 w-24">
                       <Phone className="h-4 w-4 mr-2" />
@@ -133,7 +209,6 @@ const TrainerDetailsPage: React.FC = () => {
                     </dd>
                   </div>
 
-                  {/* Join Date */}
                   <div className="flex items-center">
                     <dt className="flex items-center text-sm font-medium text-gray-500 w-24">
                       <Calendar className="h-4 w-4 mr-2" />
@@ -144,7 +219,6 @@ const TrainerDetailsPage: React.FC = () => {
                     </dd>
                   </div>
 
-                  {/* Experience */}
                   <div className="flex items-center">
                     <dt className="flex items-center text-sm font-medium text-gray-500 w-24">
                       <Award className="h-4 w-4 mr-2" />
@@ -165,7 +239,6 @@ const TrainerDetailsPage: React.FC = () => {
                   </div>
                 </dl>
 
-                {/* Save Button */}
                 {isEditing && (
                   <div className="mt-4">
                     <Button variant="primary" onClick={handleSave}>
@@ -176,7 +249,6 @@ const TrainerDetailsPage: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Specialization */}
             <Card>
               <CardHeader>
                 <CardTitle>Specialization</CardTitle>
@@ -195,12 +267,15 @@ const TrainerDetailsPage: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Assigned Members */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Assigned Members</span>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowMemberModal(true)}
+                  >
                     Assign New Member
                   </Button>
                 </CardTitle>
@@ -220,19 +295,37 @@ const TrainerDetailsPage: React.FC = () => {
                           <p className="text-sm text-gray-500">{member.email}</p>
                         </div>
                       </div>
-                      <Link to={`/members/${member.id}`}>
-                        <Button variant="outline" size="sm">
-                          View Profile
+                      <div className="flex gap-2">
+                        <Link to={`/members/${member.id}`}>
+                          <Button variant="outline" size="sm">
+                            View Profile
+                          </Button>
+                        </Link>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleRemoveMember(member.id)}
+                        >
+                          Remove
                         </Button>
-                      </Link>
+                      </div>
                     </div>
                   ))}
+                  
+                  {assignedMembers.length === 0 && (
+                    <div className="text-center py-4">
+                      <Users className="mx-auto h-12 w-12 text-gray-400" />
+                      <p className="mt-2 text-sm text-gray-500">No members assigned</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
+
+      {showMemberModal && <MemberAssignmentModal />}
     </div>
   );
 };
