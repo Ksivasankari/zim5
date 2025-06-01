@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast';
 
 // Layout Components
 import Sidebar from './components/layout/Sidebar';
+import CustomerSidebar from './components/layout/CustomerSidebar';
 import AdminLayout from './pages/admin/AdminLayout';
 
 // Client Pages
@@ -22,6 +23,9 @@ import MembershipsPage from './pages/MembershipsPage';
 import CreatePlanPage from './pages/CreatePlanPage';
 import AttendancePage from './pages/AttendancePage';
 import DueDatesPage from './pages/DueDatesPage';
+
+// Customer Pages
+import CustomerDashboardPage from './pages/customer/CustomerDashboardPage';
 
 // Admin Pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -40,20 +44,26 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Admins are not allowed to access client pages
-  if (isAuthenticated && user?.role === 'admin') {
+  if (!isAuthenticated) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  // Redirect based on user role
+  if (user?.role === 'admin' && !location.pathname.startsWith('/admin')) {
     return <Navigate to="/admin" replace />;
   }
 
-  return isAuthenticated ? (
+  if (user?.role === 'client' && !location.pathname.startsWith('/customer')) {
+    return <Navigate to="/customer" replace />;
+  }
+
+  return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
+      {user?.role === 'client' ? <CustomerSidebar /> : <Sidebar />}
       <main className="flex-1 p-8">
         {children}
       </main>
     </div>
-  ) : (
-    <Navigate to="/signin" replace />
   );
 };
 
@@ -76,6 +86,16 @@ function App() {
               <Route path="gym-owners" element={<GymOwnersPage />} />
               <Route path="gym-owners/new" element={<AddGymOwnerPage />} />
             </Route>
+
+            {/* Customer Routes */}
+            <Route
+              path="/customer"
+              element={
+                <ProtectedRoute>
+                  <CustomerDashboardPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Gym Owner Protected Routes */}
             <Route
